@@ -12,6 +12,11 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from prettytable import PrettyTable
 
+dbclient = ""
+ApiTkn = ""
+Url = ""
+
+
 def prnt_table(docs):
     tbl = PrettyTable()
     tbl.field_names = ["VM_Name", "OS", "Processors", "Power_State", "Power_Off_Days", "Capacity_Total", "Capacity_Used", "ESXi_Host"]
@@ -20,22 +25,24 @@ def prnt_table(docs):
     print(tbl)
 
 
-def update_db():
-    mclient = MongoClient('mongodb://192.168.45.129:27017')
+def update_db(data):
+    global dbclient
+    mclient = MongoClient(dbclient)
     db = mclient.cloud_insight
     col = db.vm_pwroff
-    reslt = col.insert_one(OutRslt)
+    reslt = col.insert_one(data)
+    print(reslt)
     docs = col.find_one({"_id": ObjectId(reslt.inserted_id)})
     prnt_table(docs)
 
 
 def data_collector():
+    global ApiTkn
+    global Url
     DateRng = input("Enter no.of day to check for PowerOff State: ")
     DateCmp = (datetime.now() - timedelta(int(DateRng))).strftime("%Y-%m-%d %X")
     RptDic = {"data":[]}
     OutRslt = ""
-    ApiTkn = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJyb2xlcyI6W10sImlzcyI6Im9jaSIsImFwaSI6InRydWUiLCJleHAiOjE2MTQ0MzcyOTcsImxvZ2luIjoiNmNlOWIxYTktYjA4OS00YWM1LWE3NWQtYmQwNzUwOGFhZjMxIiwiaWF0IjoxNTgyOTAxMjk3LCJ0ZW5hbnQiOiI4ZDQxOTVhNi1lYmI4LTRhZDAtYTZlZi00MTMwMjM0MGI1YWYifQ.r9NMIMXSMjdBQDmEUXEZgLpRqMVUKMMFuB3v76n0UXvZZnjgBku2uttJ7-ukm18V"
-    Url = "https://ps1325.c01.cloudinsights.netapp.com/rest/v1/queries/395/result"
     headers = {'X-CloudInsights-ApiKey': ApiTkn,
                  'Accept': 'application/json'}
     try:
@@ -63,8 +70,9 @@ def data_collector():
                 RptData["ESXi_Host"] = data['host']['name']
                 #print(RptData)
                 RptDic["data"].append(RptData)
-        #print(json.dumps(RptDic['data'], indent=2, sort_keys=False))
-        prnt_table(RptDic)
+        #prnt_table(RptDic)
+        update_db(RptDic)
+        # Enable below code if you want save output to json file
         #with open(os.path.join(sys.path[0], "output.json"), 'w') as f:
         #    f.write(json.dumps(RptDic))
 
